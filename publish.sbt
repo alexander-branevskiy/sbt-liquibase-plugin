@@ -1,4 +1,4 @@
-sonatypeProfileName := "com.github.alexander-branevskiy"
+sonatypeProfileName := "com.github.alexanderbranevskiy"
 
 publishMavenStyle := true
 

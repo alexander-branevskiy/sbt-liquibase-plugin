@@ -1,7 +1,7 @@
 import ReleaseTransformations._
 
 lazy val buildSettings = Seq(
-  organization := "com.github.alexander-branevskiy",
+  organization := "com.github.alexanderbranevskiy",
   publishArtifact in Test := false,
   sbtPlugin := true,
   scalacOptions ++= Seq("-encoding", "UTF-8", "-deprecation", "-unchecked"),
