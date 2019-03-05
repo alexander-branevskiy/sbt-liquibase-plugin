@@ -1,6 +1,5 @@
-package com.github.sbtliquibase
-
 import java.io.{OutputStreamWriter, PrintStream}
+import java.net.URLClassLoader
 import java.text.SimpleDateFormat
 
 import liquibase.Liquibase
@@ -9,8 +8,24 @@ import liquibase.integration.commandline.CommandLineUtils
 import liquibase.resource.{ClassLoaderResourceAccessor, FileSystemResourceAccessor}
 import sbt.Keys._
 import sbt.complete.DefaultParsers._
-import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.{Setting, _}
+
+object ClasspathUtilities {
+  def toLoader(paths: Seq[File]): ClassLoader = toLoader(paths, rootLoader)
+
+  def toLoader(paths: Seq[File], parent: ClassLoader): ClassLoader = new URLClassLoader(Path.toURLs(paths), parent)
+
+  lazy val rootLoader = {
+    def parent(loader: ClassLoader): ClassLoader = {
+      val p = loader.getParent
+      if (p eq null) loader else parent(p)
+    }
+
+    val systemLoader = ClassLoader.getSystemClassLoader
+    if (systemLoader ne null) parent(systemLoader)
+    else parent(getClass.getClassLoader)
+  }
+}
 
 
 object Import {
@@ -57,7 +72,7 @@ object SbtLiquibase extends AutoPlugin {
 
   import Import._
 
-  val autoImport: Import.type = Import
+  val autoImport = Import
 
   val dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
 
@@ -66,8 +81,12 @@ object SbtLiquibase extends AutoPlugin {
   }
 
   implicit class RichLiquibase(val liquibase: Liquibase) extends AnyVal {
-    def execAndClose(f: Liquibase => Unit): Unit = {
-      try { f(liquibase) } finally { liquibase.getDatabase.close() }
+    def execAndClose(f: (Liquibase) => Unit): Unit = {
+      try {
+        f(liquibase)
+      } finally {
+        liquibase.getDatabase.close()
+      }
     }
   }
 
@@ -86,9 +105,7 @@ object SbtLiquibase extends AutoPlugin {
       liquibaseOutputDefaultCatalog := true,
       liquibaseOutputDefaultSchema := true,
 
-      liquibaseGenerateChangelog := generateChangeLog,
-
-      liquibaseInstance := { () =>
+      liquibaseInstance := {
         val classpath = (dependencyClasspath in conf).value
         val accessor = new ClassLoaderResourceAccessor(ClasspathUtilities.toLoader(classpath.map(_.data)))
         val database = CommandLineUtils.createDatabaseObject(
@@ -109,7 +126,7 @@ object SbtLiquibase extends AutoPlugin {
           null, // databaseChangeLogTableName
           null // databaseChangeLogLockTableName
         )
-        new Liquibase(liquibaseChangelog.value.absolutePath, new FileSystemResourceAccessor, database)
+        () => new Liquibase(liquibaseChangelog.value.absolutePath, new FileSystemResourceAccessor, database)
       },
 
       liquibaseUpdate := liquibaseInstance.value().execAndClose(_.update(liquibaseContext.value, new OutputStreamWriter(System.out))),
@@ -190,20 +207,32 @@ object SbtLiquibase extends AutoPlugin {
     )
   }
 
-  def generateChangeLog = Def.task {
-    val instance: Liquibase = liquibaseInstance.value()
-    try {
-      CommandLineUtils.doGenerateChangeLog(
-        liquibaseChangelog.value.absolutePath,
-        instance.getDatabase,
-        liquibaseDefaultCatalog.value.orNull,
-        liquibaseDefaultSchemaName.value.orNull,
-        null, // snapshotTypes
-        null, // author
-        null, // context
-        liquibaseDataDir.value.absolutePath,
-        new DiffOutputControl())
-    } finally { instance.getDatabase.close() }
+  def generateChangeLog = {
+    (liquibaseInstance, liquibaseChangelog)
+    liquibaseInstance.map { liquibase =>
+      liquibaseChangelog.map { clog =>
+        liquibaseDefaultCatalog.map { defaultCatalog =>
+          liquibaseDefaultSchemaName.map { defaultSchemaName =>
+            liquibaseDataDir.map { dataDir =>
+              val instance = liquibase()
+              try {
+                CommandLineUtils.doGenerateChangeLog(
+                  clog.absolutePath,
+                  instance.getDatabase,
+                  defaultCatalog.orNull,
+                  defaultSchemaName.orNull,
+                  null, // snapshotTypes
+                  null, // author
+                  null, // context
+                  dataDir.absolutePath,
+                  new DiffOutputControl())
+              } finally {
+                instance.getDatabase.close()
+              }
+            }
+          }
+        }
+      }
+    }
   }
-
 }
