@@ -1,3 +1,5 @@
+package com.github.alexanderbranevskiy
+
 import java.io.{OutputStreamWriter, PrintStream}
 import java.net.URLClassLoader
 import java.text.SimpleDateFormat
