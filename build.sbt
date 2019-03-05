@@ -1,9 +1,7 @@
 import ReleaseTransformations._
 
 lazy val buildSettings = Seq(
-  organization := "com.permutive",
-  organizationName := "Permutive Inc.",
-  organizationHomepage := Some(new URL("https://permutive.com")),
+  organization := "com.github.alexander-branevskiy",
   publishArtifact in Test := false,
   sbtPlugin := true,
   scalacOptions ++= Seq("-encoding", "UTF-8", "-deprecation", "-unchecked"),
