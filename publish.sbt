@@ -1,43 +1,25 @@
-
-def settingsIfCI[T](setting: => T):Seq[T] = {
-  for { isCi <- sys.env.get("CI") if isCi.toBoolean } yield setting
-}.toSeq
-
-def settingIfCI[T](setting: => T):Option[T] = {
-  for { isCi <- sys.env.get("CI") if isCi.toBoolean } yield setting
-}
-
-credentials ++= settingsIfCI {
-  Credentials(
-    "Sonatype Nexus Repository Manager", "oss.sonatype.org",
-    sys.env.getOrElse("SONATYPE_USERNAME", ""),
-    sys.env.getOrElse("SONATYPE_PASSWORD", ""))
-}
-
-pgpSecretRing := settingIfCI(file("local.secring.gpg")).getOrElse(pgpSecretRing.value)
-pgpPublicRing := settingIfCI(file("local.pubring.gpg")).getOrElse(pgpPublicRing.value)
+sonatypeProfileName := "com.github.alexander-branevskiy"
 
 publishMavenStyle := true
 
-pomIncludeRepository := { _ => false }
+licenses := Seq("APL2" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt"))
+homepage := Some(url("https://github.com/permutive/sbt-liquibase-plugin"))
+scmInfo := Some(
+  ScmInfo(
+    url("https://github.com/permutive/sbt-liquibase-plugin"),
+    "scm:git@github.com:permutive/sbt-liquibase-plugin.git"
+  )
+)
 
-publishTo := {
-  val nexus = "https://oss.sonatype.org/"
+developers := List(
+  Developer(id="alexander-branevskiy", name="Alexander Branevskiy", email="alexander.branveskiy@gmail.com", url=url("https://github.com"))
+)
+
+publishTo := Some(
   if (isSnapshot.value)
-    Some("snapshots" at nexus + "content/repositories/snapshots")
+    Opts.resolver.sonatypeSnapshots
   else
-    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
-}
+    Opts.resolver.sonatypeStaging
+)
 
-pomExtra :=
-  <scm>
-    <url>git@github.com:sbtliquibase/sbt-liquibase-plugin.git</url>
-    <connection>scm:git:git@github.com:sbtliquibase/sbt-liquibase-plugin.git</connection>
-  </scm>
-  <developers>
-    <developer>
-      <id>lance</id>
-      <name>Lance Linder</name>
-      <url>http://buddho.io/lance</url>
-    </developer>
-  </developers>
+version in ThisBuild := "1.1.1"

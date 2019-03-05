@@ -8,8 +8,8 @@ import liquibase.diff.output.DiffOutputControl
 import liquibase.integration.commandline.CommandLineUtils
 import liquibase.resource.{ClassLoaderResourceAccessor, FileSystemResourceAccessor}
 import sbt.Keys._
-import sbt.classpath._
 import sbt.complete.DefaultParsers._
+import sbt.internal.inc.classpath.ClasspathUtilities
 import sbt.{Setting, _}
 
 
@@ -112,7 +112,7 @@ object SbtLiquibase extends AutoPlugin {
         new Liquibase(liquibaseChangelog.value.absolutePath, new FileSystemResourceAccessor, database)
       },
 
-      liquibaseUpdate := liquibaseInstance.value().execAndClose(_.update(liquibaseContext.value)),
+      liquibaseUpdate := liquibaseInstance.value().execAndClose(_.update(liquibaseContext.value, new OutputStreamWriter(System.out))),
 
       liquibaseUpdateSql := liquibaseInstance.value().execAndClose(_.update(liquibaseContext.value, new OutputStreamWriter(System.out))),
 
@@ -136,13 +136,13 @@ object SbtLiquibase extends AutoPlugin {
 
       liquibaseRollback := {
         val tag = token(Space ~> StringBasic, "<tag>").parsed
-        liquibaseInstance.value().execAndClose(_.rollback(tag, liquibaseContext.value))
+        liquibaseInstance.value().execAndClose(_.rollback(tag, liquibaseContext.value, new OutputStreamWriter(System.out)))
         streams.value.log.info("Rolled back to tag %s".format(tag))
       },
 
       liquibaseRollbackCount := {
         val count = token(Space ~> IntBasic, "<count>").parsed
-        liquibaseInstance.value().execAndClose(_.rollback(count, liquibaseContext.value))
+        liquibaseInstance.value().execAndClose(_.rollback(count, liquibaseContext.value, new OutputStreamWriter(System.out)))
         streams.value.log.info("Rolled back to count %s".format(count))
       },
 
@@ -162,7 +162,7 @@ object SbtLiquibase extends AutoPlugin {
 
       liquibaseRollbackToDate := {
         val date = token(Space ~> DateParser, "<date/time>").parsed
-        liquibaseInstance.value().execAndClose(_.rollback(date, liquibaseContext.value))
+        liquibaseInstance.value().execAndClose(_.rollback(date, liquibaseContext.value, new OutputStreamWriter(System.out)))
       },
 
       liquibaseRollbackToDateSql := {
